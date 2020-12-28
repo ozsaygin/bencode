@@ -1,7 +1,8 @@
 package bencode
 
 import (
-	"regexp"
+	"reflect"
+	"testing"
 )
 
 // Strings are length-prefixed base ten followed by a colon and the string. For example 4:spam corresponds to 'spam'.
@@ -12,45 +13,37 @@ import (
 
 // Dictionaries are encoded as a 'd' followed by a list of alternating keys and their corresponding values followed by an 'e'. For example, d3:cow3:moo4:spam4:eggse corresponds to {'cow': 'moo', 'spam': 'eggs'} and d4:spaml1:a1:bee corresponds to {'spam': ['a', 'b']}. Keys must be strings and appear in sorted order (sorted as raw strings, not alphanumerics).
 
-// Decode unmarshalls bencoded string to map object
-func Decode(data string) map[string]string {
-
-	m := make(map[string]string)
-
-	// process dictionary
-	if data[0] == 'd' {
-		dataLen := len(data)
-		data = data[1 : dataLen-1]
-
-		for len(data) > 1 {
-			// first element must be string
-			// hence, it must be in form of digit:word
-
-			// first key comes and then value
-			// repeat the same process
-			re := regexp.MustCompile(`(\d+)\:([a-zA-Z]+)`)
-			matches := re.FindStringSubmatch(data)
-			var key string
-			if len(matches) > 1 {
-				key = matches[2]
-			}
-			data = data[len(matches[0]):]
-			// Process the value
-			// For now value can be only string
-			re = regexp.MustCompile(`(\d+)\:([a-zA-Z]+)`)
-			matches = re.FindStringSubmatch(data)
-			if len(matches) > 1 {
-				value := matches[2]
-				m[key] = value
-			}
-			data = data[len(matches[0]):]
-		}
+func TestDecode(t *testing.T) {
+	type args struct {
+		data string
 	}
-	return m
+	tests := []struct {
+		name string
+		args args
+		want map[string]string
+	}{
+		{
+			name: "single string key value map",
+			args: args{"d3:cow3:mooe"},
+			want: map[string]string{
+				"cow": "moo",
+			},
+		},
+		{
+			name: "multiple string key value map",
+			args: args{"d3:cat4:meow4:frog5:croak6:pigeon3:cooe"},
+			want: map[string]string{
+				"cat":    "meow",
+				"frog":   "croak",
+				"pigeon": "coo",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Decode(tt.args.data); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Decode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
-
-// func main() {
-
-// 	mapExample := "d3:cow3:moo4:spam4:eggse"
-// 	Decode(mapExample)
-// }
