@@ -2,6 +2,7 @@ package bencode
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 )
 
@@ -13,57 +14,51 @@ import (
 
 // Dictionaries are encoded as a 'd' followed by a list of alternating keys and their corresponding values followed by an 'e'. For example, d3:cow3:moo4:spam4:eggse corresponds to {'cow': 'moo', 'spam': 'eggs'} and d4:spaml1:a1:bee corresponds to {'spam': ['a', 'b']}. Keys must be strings and appear in sorted order (sorted as raw strings, not alphanumerics).
 
+type DecodeState struct {
+	data string
+	v    interface{}
+}
+
 // Decode unmarshalls bencoded string to map object
-// func Decode(data string) map[string]string {
+func Decode(data string) interface{} {
 
-// 	strRegex = regexp.MustCompile(`de`)
-// 	intRegex = regexp.MustCompile()
-// 	lstRegex = regexp.MustCompile()
-// 	mapRegex = regexp.MustCompile()
+	prefix := data[0]
 
-// 	// process dictionary
-// 	if data[0] == 'd' {
-// 		m := make(map[string]string)
-// 		dataLen := len(data)
-// 		data = data[1 : dataLen-1]
+	for data != "" {
+		switch prefix {
 
-// 		for len(data) > 1 {
-// 			// first element must be string
-// 			// hence, it must be in form of digit:word
+		// case 'i':
+		// 	re := regexp.MustCompile(`i(\-?\d+)e`)
+		// 	matches := re.FindStringSubmatch(data)
+		// 	value, _ := strconv.Atoi(matches[0])
+		// 	return value
 
-// 			// first key comes and then value
-// 			// repeat the same process
-// 			re := regexp.MustCompile(`(\d+)\:([a-zA-Z]+)`)
-// 			matches := re.FindStringSubmatch(data)
-// 			var key string
-// 			if len(matches) > 1 {
-// 				key = matches[2]
-// 			}
-// 			data = data[len(matches[0]):]
+		// case 'l':
+		// 	re := regexp.MustCompile(`l(.*)e`)
+		// matches := re.FindStringSubmatch(data)
+		// 	value, _ := strconv.Atoi(matches[0])
+		// 	return value
 
-// 			// Process the value
-// 			// For now value can be only string
+		case 'd':
+			re := regexp.MustCompile(`d(.*)e`)
+			matches := re.FindStringSubmatch(data)
+			inner := matches[1]
+			dict := make(map[string]interface{})
 
-// 			if data[0] == 'i' {
-// 				// value is integer
-// 				re = regexp.MustCompile(`\i(\d+)\e`)
-// 				matches = re.FindStringSubmatch(data)
-// 				fmt.Println(matches)
+			key := Decode(inner).(string)
+			value := Decode(inner)
 
-// 			} else {
+			dict[key] = value
+			return
 
-// 				re = regexp.MustCompile(`(\d+)\:([a-zA-Z]+)`)
-// 				matches = re.FindStringSubmatch(data)
-// 				if len(matches) > 1 {
-// 					value := matches[2]
-// 					m[key] = value
-// 				}
-// 				data = data[len(matches[1]):]
-// 			}
-// 			return m
-// 		}
-// 	}
-// }
+		default:
+			re := regexp.MustCompile(`(\d+)\:([a-zA-Z]+)`)
+			matches := re.FindStringSubmatch(data)
+			word := matches[2]
+			return word
+		}
+	}
+}
 
 // Encode marshalls any input type into bencoded format
 func Encode(v interface{}) string {
