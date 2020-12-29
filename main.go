@@ -20,11 +20,12 @@ func (ds *DecodeState) Decode() interface{} {
 	for ds.data != "" {
 		switch prefix {
 
-		// case 'i':
-		// 	re := regexp.MustCompile(`i(\-?\d+)e`)
-		// 	matches := re.FindStringSubmatch(data)
-		// 	value, _ := strconv.Atoi(matches[0])
-		// 	return value
+		case 'i':
+			re := regexp.MustCompile(`i(\-?\d+)e`)
+			matches := re.FindStringSubmatch(ds.data)
+			value, _ := strconv.Atoi(matches[1])
+			ds.data = strings.TrimPrefix(ds.data, matches[0])
+			return value
 
 		case 'l':
 			re := regexp.MustCompile(`l(.*)e`)
@@ -58,7 +59,7 @@ func (ds *DecodeState) Decode() interface{} {
 			return dict
 
 		default:
-			re := regexp.MustCompile(`(\d+)\:([a-zA-Z]+)`)
+			re := regexp.MustCompile(`(\d+)\:(.+)`)
 			matches := re.FindStringSubmatch(ds.data)
 
 			ss := matches[1]
@@ -80,7 +81,8 @@ func main() {
 
 	// data := "4:spam"
 	// data := "d3:cat4:meow3:cow3:mooe"
-	data := "d4:spaml1:a1:bee"
+	// data := "d4:spaml1:a1:bee"
+	data := `d1:0d4:body50:quia e rerum est autem sunt rem eveniet architecto2:idi1e5:title74:sunt aut facere repellat provident occaecati excepturi optio reprehenderit6:userIdi1eee`
 	ds := &DecodeState{data: data}
 	fmt.Println(ds.Decode())
 
