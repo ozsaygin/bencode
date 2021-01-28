@@ -6,10 +6,13 @@
 package bencode
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
 // Decoder is a type which store decoding state.
@@ -43,8 +46,8 @@ func (e *Encoder) marshal(v interface{}) []byte {
 
 	case reflect.Int:
 
-		num := v.Interface().(int)
-		encodedData := fmt.Sprintf("i%de", num)
+		num := v.Interface()
+		encodedData := fmt.Sprintf("i%ve", num)
 		return []byte(encodedData)
 
 	case reflect.Slice:
@@ -63,6 +66,10 @@ func (e *Encoder) marshal(v interface{}) []byte {
 		return data
 
 	case reflect.Map:
+
+		// FIXME:
+		// Map result is undeterministic since map is unsorted in nature.
+		// Fix this to pass the map test case.
 
 		if v.IsNil() {
 			return []byte{}
@@ -84,8 +91,14 @@ func (e *Encoder) marshal(v interface{}) []byte {
 
 // Marshal encodes input to bencoded format.
 // Only specific types (Map, Array, Integer, String) can be converted to bencoding format.
-// It takes any object types mentioned above as parameter and returns bencoded data as byte array.
+// It takes any object types mentioned above as parameter.
+// It returns bencoded data as byte array.
+// Marshaling operation is performed by private private marshaller function.
+// See (e *Encoder) marshal(v interface{}) []byte for implementation details.
 func Marshal(v interface{}) ([]byte, error) {
+
+	// FIXME: Error if type is not Map, Array, Integer (int).
+
 	e := NewEncoder()
 	data := e.marshal(v)
 	if len(data) == 0 {
@@ -96,87 +109,87 @@ func Marshal(v interface{}) ([]byte, error) {
 	return data, nil
 }
 
-// // Unmarshal decodes bencoded string into Go object
-// func Unmarshal(data []byte, v interface{}) error {
+// Unmarshal decodes bencoded string into Go object
+func Unmarshal(data []byte, v interface{}) error {
 
-// 	d := NewDecoder(data, v)
-// 	d.unmarshall()
+	d := NewDecoder(data, v)
+	d.unmarshall()
 
-// 	return nil
-// }
+	return nil
+}
 
-// func (ds *Decoder) unmarshall() interface{} {
+func (ds *Decoder) unmarshall() interface{} {
 
-// 	prefix := ds.data[0]
+	prefix := ds.data[0]
 
-// 	// parse data until nothing left to parse
-// 	for len(ds.data) > 0 {
+	// parse data until nothing left to parse
+	for len(ds.data) > 0 {
 
-// 		switch prefix {
+		switch prefix {
 
-// 		case 'i':
-// 			re := regexp.MustCompile(`i(\-?\d+)e`)
-// 			matches := re.FindSubmatch(ds.data)
-// 			value, err := strconv.Atoi(matches[1])
+		case 'i':
+			re := regexp.MustCompile(`i(\-?\d+)e`)
+			matches := re.FindSubmatch(ds.data)
+			value, err := strconv.Atoi(matches[1])
 
-// 			if err != nil {
-// 				fmt.Errorf("Corrupted bencode format")
-// 				return nil
-// 			}
+			if err != nil {
+				fmt.Errorf("Corrupted bencode format")
+				return nil
+			}
 
-// 			ds.data = bytes.TrimPrefix(ds.data, matches[0])
-// 			return value
+			ds.data = bytes.TrimPrefix(ds.data, matches[0])
+			return value
 
-// 		case 'l':
-// 			re := regexp.MustCompile(`l(.*)e`)
-// 			matches := re.FindSubmatch(ds.data)
-// 			elems := matches[1]
-// 			lst := []interface{}{}
+		case 'l':
+			re := regexp.MustCompile(`l(.*)e`)
+			matches := re.FindSubmatch(ds.data)
+			elems := matches[1]
+			lst := []interface{}{}
 
-// 			localDecoder := &Decoder{data: elems}
-// 			for localDecoder.data != "" {
-// 				elm := localDecoder.unmarshall()
-// 				lst = append(lst, elm)
-// 			}
+			localDecoder := &Decoder{data: elems}
+			for localDecoder.data != "" {
+				elm := localDecoder.unmarshall()
+				lst = append(lst, elm)
+			}
 
-// 			ds.data = strings.TrimPrefix(ds.data, matches[0])
-// 			return lst
+			ds.data = strings.TrimPrefix(ds.data, matches[0])
+			return lst
 
-// 		case 'd':
-// 			// parse dictionary content
-// 			re := regexp.MustCompile(`d(.*)e`)
-// 			matches := re.FindSubmatch(ds.data)
-// 			inner := matches[1]
-// 			dict := make(map[string]interface{})
+		case 'd':
+			// parse dictionary content
+			re := regexp.MustCompile(`d(.*)e`)
+			matches := re.FindSubmatch(ds.data)
+			inner := matches[1]
+			dict := make(map[string]interface{})
 
-// 			// rest of data can be any format
-// 			// recursively calling unmarshall handles the pairs
-// 			localDecoder := &Decoder{data: inner}
-// 			for localDecoder.data != "" {
-// 				key := localDecoder.unmarshall().(string)
-// 				value := localDecoder.unmarshall()
-// 				dict[key] = value
-// 			}
+			// rest of data can be any format
+			// recursively calling unmarshall handles the pairs
+			localDecoder := &Decoder{data: inner}
+			for localDecoder.data != "" {
+				key := localDecoder.unmarshall().(string)
+				value := localDecoder.unmarshall()
+				dict[key] = value
+			}
 
-// 			// update data by trimming parsed part
-// 			ds.data = bytes.TrimPrefix(ds.data, matches[0])
-// 			return dict
+			// update data by trimming parsed part
+			ds.data = bytes.TrimPrefix(ds.data, matches[0])
+			return dict
 
-// 		default:
-// 			// default, assume data type is string
-// 			re := regexp.MustCompile(`(\d+)\:(.+)`)
-// 			matches := re.FindSubmatch(ds.data)
+		default:
+			// default, assume data type is string
+			re := regexp.MustCompile(`(\d+)\:(.+)`)
+			matches := re.FindSubmatch(ds.data)
 
-// 			ss := matches[1]
-// 			length, _ := strconv.Atoi(ss)
-// 			word := matches[2]
-// 			word = word[:length]
+			ss := matches[1]
+			length, _ := strconv.Atoi(ss)
+			word := matches[2]
+			word = word[:length]
 
-// 			encodedStr := strconv.Itoa(length) + ":" + word
-// 			ds.data = strings.TrimPrefix(ds.data, encodedStr)
+			encodedStr := strconv.Itoa(length) + ":" + word
+			ds.data = strings.TrimPrefix(ds.data, encodedStr)
 
-// 			return word
-// 		}
-// 	}
-// 	return nil
-// }
+			return word
+		}
+	}
+	return nil
+}

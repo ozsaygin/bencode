@@ -49,26 +49,36 @@ func TestMarshal(t *testing.T) {
 	}
 
 	type testCase struct {
-		name string
-		args args
-		want []byte
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
 	}
 
 	tests := []testCase{
 		{
-			name: "Simple Positive Integer",
-			args: args{14},
-			want: []byte("i14e"),
+			name:    "Simple Positive Integer",
+			args:    args{14},
+			want:    []byte("i14e"),
+			wantErr: false,
 		},
 		{
-			name: "Simple Negative Integer",
-			args: args{-14},
-			want: []byte("i-14e"),
+			name:    "Simple Positive 16bit Integer",
+			args:    args{int16(14)},
+			want:    []byte("i14e"),
+			wantErr: false,
 		},
 		{
-			name: "Simple String Expression",
-			args: args{"bencode"},
-			want: []byte("7:bencode"),
+			name:    "Simple Negative Integer",
+			args:    args{-14},
+			want:    []byte("i-14e"),
+			wantErr: false,
+		},
+		{
+			name:    "Simple String Expression",
+			args:    args{"bencode"},
+			want:    []byte("7:bencode"),
+			wantErr: false,
 		},
 		{
 			name: "Simple Map Expression",
@@ -77,96 +87,100 @@ func TestMarshal(t *testing.T) {
 				"Jaguar": "Panthera onca",
 				"Lion":   "Panthera leo",
 			}},
-			want: []byte("d3:Cat11:Felis catus6:Jaguar13:Panthera onca4:Lion12:Panthera leoe"),
+			want:    []byte("d3:Cat11:Felis catus6:Jaguar13:Panthera onca4:Lion12:Panthera leoe"),
+			wantErr: false,
 		},
 		{
-			name: "Simple String List Expression",
-			args: args{[]string{"A", "B", "C"}},
-			want: []byte("l1:A1:B1:Ce"),
+			name:    "Simple String List Expression",
+			args:    args{[]string{"A", "B", "C"}},
+			want:    []byte("l1:A1:B1:Ce"),
+			wantErr: false,
 		},
-		// {
-		// 	name: "Simple Integer List Expression",
-		// 	args: args{[]int{13, 0, -23, 93}},
-		// 	want: []byte("d1:0i13e1:1i0e1:2i-23e1:3i93ee"),
-		// },
+		{
+			name:    "Simple Integer List Expression",
+			args:    args{[]int{13, 0, -23, 93}},
+			want:    []byte("li13ei0ei-23ei93ee"),
+			wantErr: false,
+		},
 	}
 
 	// Run unit tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, err := Marshal(tt.args.v); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Marshal() = %v, want %v, err = %v", string(got), string(tt.want), err)
+			got, err := Marshal(tt.args.v)
+			if !reflect.DeepEqual(got, tt.want) && (err != nil) != tt.wantErr {
+				t.Errorf("Marshal() = %v, want %v, error = %v, wantError = %v", got, tt.want, (err != nil), tt.wantErr)
 			}
 		})
 	}
 }
 
-// func TestUnmarshal(t *testing.T) {
-// 	type args struct {
-// 		data []byte
-// 		v    interface{}
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		args    args
-// 		wantErr bool
-// 	}{
-// 		{
-// 			name: "simple string",
-// 			args: args{
-// 				data: []byte("3:cat"),
-// 			},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "simple string map",
-// 			args: args{
-// 				data: []byte("d3:cat4:meow3:cow3:mooe"),
-// 			},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "simple dictionary with integer value",
-// 			args: args{
-// 				data: []byte("d3:cat4:meow3:cowi42e"),
-// 			},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "list",
-// 			args: args{
-// 				data: []byte("l4:spam4:eggsee"),
-// 			},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "map with list",
-// 			args: args{
-// 				data: []byte("d4:spaml1:a1:bee"),
-// 			},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "negatif integer",
-// 			args: args{
-// 				data: []byte("i-3e"),
-// 			},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "positive integer",
-// 			args: args{
-// 				data: []byte("i34e"),
-// 			},
-// 			wantErr: true,
-// 		},
-// 	}
+func TestUnmarshal(t *testing.T) {
+	type args struct {
+		data []byte
+		v    interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Simple String",
+			args: args{
+				data: []byte("3:cat"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Simple String Map",
+			args: args{
+				data: []byte("d3:cat4:meow3:cow3:mooe"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Simple Map With Integer Value",
+			args: args{
+				data: []byte("d3:cat4:meow3:cowi42e"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "List",
+			args: args{
+				data: []byte("l4:spam4:eggsee"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Map With List",
+			args: args{
+				data: []byte("d4:spaml1:a1:bee"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negatif Integer",
+			args: args{
+				data: []byte("i-3e"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Positive Integer",
+			args: args{
+				data: []byte("i34e"),
+			},
+			wantErr: true,
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if err := Unmarshal(tt.args.data, tt.args.v); (err != nil) != tt.wantErr {
-// 				t.Errorf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
-// 			}
-// 		})
-// 	}
-// }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := Unmarshal(tt.args.data, tt.args.v); (err != nil) != tt.wantErr {
+				t.Errorf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
