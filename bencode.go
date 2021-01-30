@@ -98,6 +98,13 @@ func (e *Encoder) marshal(v interface{}) []byte {
 func Marshal(v interface{}) ([]byte, error) {
 
 	// FIXME: Error if type is not Map, Array, Integer (int).
+	// Test case:
+	// {
+	// 		name:    "Simple Positive 16bit Integer",
+	// 		args:    args{int16(14)},
+	// 		want:    []byte("i14e"),
+	// 		wantErr: false,
+	// 	},
 
 	e := NewEncoder()
 	data := e.marshal(v)

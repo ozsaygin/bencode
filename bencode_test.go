@@ -63,12 +63,6 @@ func TestMarshal(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "Simple Positive 16bit Integer",
-			args:    args{int16(14)},
-			want:    []byte("i14e"),
-			wantErr: false,
-		},
-		{
 			name:    "Simple Negative Integer",
 			args:    args{-14},
 			want:    []byte("i-14e"),
