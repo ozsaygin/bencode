@@ -6,13 +6,10 @@
 package bencode
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
-	"regexp"
 	"strconv"
-	"strings"
 )
 
 // Decoder is a type which store decoding state.
@@ -39,7 +36,10 @@ func (e *Encoder) marshal(v interface{}) []byte {
 
 	switch v := reflect.ValueOf(v); v.Kind() {
 	case reflect.String:
-		word := v.Interface().(string)
+
+		// FIXME: Handle errors on type assertion
+
+		word, _ := v.Interface().(string)
 		length := strconv.Itoa(len(word))
 		encodedData := fmt.Sprintf("%s:%s", length, word)
 		return []byte(encodedData)
@@ -109,87 +109,88 @@ func Marshal(v interface{}) ([]byte, error) {
 	return data, nil
 }
 
-// Unmarshal decodes bencoded string into Go object
-func Unmarshal(data []byte, v interface{}) error {
+// // Unmarshal decodes bencoded string into Go object
+// func Unmarshal(data []byte, v interface{}) error {
 
-	d := NewDecoder(data, v)
-	d.unmarshall()
+// 	d := NewDecoder(data, v)
+// 	d.unmarshall()
 
-	return nil
-}
+// 	return nil
+// }
 
-func (ds *Decoder) unmarshall() interface{} {
+// func (d *Decoder) unmarshall() interface{} {
 
-	prefix := ds.data[0]
+// 	prefix := d.data[0]
 
-	// parse data until nothing left to parse
-	for len(ds.data) > 0 {
+// 	// Parse data until nothing left
+// 	for len(d.data) > 0 {
 
-		switch prefix {
+// 		switch prefix {
 
-		case 'i':
-			re := regexp.MustCompile(`i(\-?\d+)e`)
-			matches := re.FindSubmatch(ds.data)
-			value, err := strconv.Atoi(matches[1])
+// 		// case 'i':
+// 		// 	re := regexp.MustCompile(`i(\-?\d+)e`)
+// 		// 	matches := re.FindSubmatch(d.data)
+// 		// 	value, err := strconv.Atoi(matches[1])
 
-			if err != nil {
-				fmt.Errorf("Corrupted bencode format")
-				return nil
-			}
+// 		// 	if err != nil {
+// 		// 		fmt.Errorf("Corrupted bencode format")
+// 		// 		return nil
+// 		// 	}
 
-			ds.data = bytes.TrimPrefix(ds.data, matches[0])
-			return value
+// 		// 	d.data = bytes.TrimPrefix(d.data, matches[0])
+// 		// 	return value
 
-		case 'l':
-			re := regexp.MustCompile(`l(.*)e`)
-			matches := re.FindSubmatch(ds.data)
-			elems := matches[1]
-			lst := []interface{}{}
+// 		// case 'l':
+// 		// 	re := regexp.MustCompile(`l(.*)e`)
+// 		// 	matches := re.FindSubmatch(d.data)
+// 		// 	elems := matches[1]
+// 		// 	lst := []interface{}{}
 
-			localDecoder := &Decoder{data: elems}
-			for localDecoder.data != "" {
-				elm := localDecoder.unmarshall()
-				lst = append(lst, elm)
-			}
+// 		// 	localDecoder := &Decoder{data: elems}
+// 		// 	for localDecoder.data != "" {
+// 		// 		elm := localDecoder.unmarshall()
+// 		// 		lst = append(lst, elm)
+// 		// 	}
 
-			ds.data = strings.TrimPrefix(ds.data, matches[0])
-			return lst
+// 		// 	d.data = strings.TrimPrefix(d.data, matches[0])
+// 		// 	return lst
 
-		case 'd':
-			// parse dictionary content
-			re := regexp.MustCompile(`d(.*)e`)
-			matches := re.FindSubmatch(ds.data)
-			inner := matches[1]
-			dict := make(map[string]interface{})
+// 		// case 'd':
+// 		// 	// parse dictionary content
+// 		// 	re := regexp.MustCompile(`d(.*)e`)
+// 		// 	matches := re.FindSubmatch(d.data)
+// 		// 	inner := matches[1]
+// 		// 	dict := make(map[string]interface{})
 
-			// rest of data can be any format
-			// recursively calling unmarshall handles the pairs
-			localDecoder := &Decoder{data: inner}
-			for localDecoder.data != "" {
-				key := localDecoder.unmarshall().(string)
-				value := localDecoder.unmarshall()
-				dict[key] = value
-			}
+// 		// 	// rest of data can be any format
+// 		// 	// recursively calling unmarshall handles the pairs
+// 		// 	localDecoder := &Decoder{data: inner}
+// 		// 	for localDecoder.data != "" {
+// 		// 		key := localDecoder.unmarshall().(string)
+// 		// 		value := localDecoder.unmarshall()
+// 		// 		dict[key] = value
+// 		// 	}
 
-			// update data by trimming parsed part
-			ds.data = bytes.TrimPrefix(ds.data, matches[0])
-			return dict
+// 		// 	// update data by trimming parsed part
+// 		// 	d.data = bytes.TrimPrefix(d.data, matches[0])
+// 		// 	return dict
 
-		default:
-			// default, assume data type is string
-			re := regexp.MustCompile(`(\d+)\:(.+)`)
-			matches := re.FindSubmatch(ds.data)
+// 		default:
 
-			ss := matches[1]
-			length, _ := strconv.Atoi(ss)
-			word := matches[2]
-			word = word[:length]
+// 			// By default, assume that data type is string.
+// 			re := regexp.MustCompile(`(\d+)\:(.+)`)
+// 			matches := re.FindSubmatch(d.data)
 
-			encodedStr := strconv.Itoa(length) + ":" + word
-			ds.data = strings.TrimPrefix(ds.data, encodedStr)
+// 			ss := matches[1]
+// 			length, _ := strconv.Atoi(ss)
+// 			word := matches[2]
+// 			word = word[:length]
 
-			return word
-		}
-	}
-	return nil
-}
+// 			encodedStr := strconv.Itoa(length) + ":" + word
+// 			d.data = strings.TrimPrefix(d.data, encodedStr)
+
+// 			return word
+// 		}
+// 	}
+// 	return nil
+// }
